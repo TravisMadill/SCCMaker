@@ -1,0 +1,79 @@
+﻿//Controls
+Popon	14	20
+Rollup2	14	25
+Rollup3	14	26
+Rollup4	14	27
+Painton	14	29
+CarriageReturn	14	2d
+TabOver1	17	21
+TabOver2	17	22
+TabOver3	17	23
+ClearBuffer	14	2e
+ClearScreen	14	2c
+DisplayCaption	14	2f
+//Styling (mid-row)
+White	11	20
+White_	11	21
+Green	11	22
+Green_	11	23
+Blue	11	24
+Blue_	11	25
+Cyan	11	26
+Cyan_	11	27
+Red	11	28
+Red_	11	29
+Yellow	11	2a
+Yellow_	11	2b
+Magenta	11	2c
+Magenta_	11	2d
+Italics	11	2e
+Italics_	11	2f
+//Styling (Preamble: Position)
+Row1	11
+Row2	11
+Row3	12
+Row4	12
+Row5	15
+Row6	15
+Row7	16
+Row8	16
+Row9	17
+Row10	17
+Row11	10
+Row12	13
+Row13	13
+Row14	14
+Row15	14
+//NOTE: For rows greater than 11, the even/odd relation is reversed!!! (because consistency)
+OddTabs0	50
+EvenTabs0	70
+OddTabs0_	51
+EvenTabs0_	71
+OddTabs1	52
+EvenTabs1	72
+OddTabs1_	53
+EvenTabs1_	73
+OddTabs2	54
+EvenTabs2	74
+OddTabs2_	55
+EvenTabs2_	75
+OddTabs3	56
+EvenTabs3	76
+OddTabs3_	57
+EvenTabs3_	77
+OddTabs4	58
+EvenTabs4	78
+OddTabs4_	59
+EvenTabs4_	79
+OddTabs5	5a
+EvenTabs5	7a
+OddTabs5_	5b
+EvenTabs5_	7b
+OddTabs6	5c
+EvenTabs6	7c
+OddTabs6_	5d
+EvenTabs6_	7d
+OddTabs7	5e
+EvenTabs7	7e
+OddTabs7_	5f
+EvenTabs7_	7f
