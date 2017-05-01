@@ -692,6 +692,7 @@ namespace SCCMaker
                     if (fileVersion.Equals(Strings.saveVersion_v2))
                     {
                         fpsSelector.Value = r.ReadDecimal();
+                        checkBox2.Checked = r.ReadBoolean(); //Drop frame
                         int len = r.ReadInt32();
                         captionList = new List<Caption>(len);
                         captionList.Clear();
@@ -1126,6 +1127,7 @@ namespace SCCMaker
                         {
                             w.Write(Strings.saveVersion_v2);
                             w.Write(fpsSelector.Value);
+                            w.Write(checkBox2.Checked); //Drop frame
                             w.Write(captionList.Count);
                             for (int i = 0; i < captionList.Count; i++)
                             {
@@ -1153,7 +1155,7 @@ namespace SCCMaker
                     else captionList.RemoveAt((int)--numericUpDown1.Value);
                     numericUpDown1.Maximum--;
                     numericUpDown1_ValueChanged(numericUpDown1, null);
-                } else statusBar.Text = "Remove failed. Removing would create an empty transcript.";
+                } else statusBar.Text = Strings.edit_remove_fail_sizeOne;
             } else statusBar.Text = Strings.edit_remove_fail_transcriptNull;
         }
 
