@@ -32,8 +32,6 @@ namespace SCCMaker
 
         List<Caption> captionList;
 
-        public static string zeroTime = "00:00:00:00";
-
         ComponentResourceManager resources = new ComponentResourceManager(typeof(Form1));
         public int paintProblem = 0;
         public string paintProblemStr = "";
@@ -53,6 +51,9 @@ namespace SCCMaker
                 if (c.Font.Equals(SystemFonts.DefaultFont))
                     c.Font = SystemFonts.MessageBoxFont;
             }
+
+            Timestamp.FrameRate = fpsSelector.Value;
+            Timestamp.DropFrame = checkBox2.Checked;
 
             StreamReader fs = new StreamReader(Application.StartupPath + @"\CharacterCodes.txt");
             string[] input = fs.ReadToEnd().Split('\n');
@@ -462,7 +463,23 @@ namespace SCCMaker
             if(captionList != null)
                 label11.Text = "Total captions: " + captionList.Count;
             else label11.Text = "Total captions: Ø";
+            updateWordLengthLabel();
             pictureBox1.Refresh();
+        }
+
+        private void updateWordLengthLabel()
+        {
+            try
+            {
+                Caption c = captionList[(int)numericUpDown1.Value - 1].Clone();
+                c.DisplayStr = richTextBox1.Text;
+                //Console.WriteLine(c.Arguments);
+                label15.Text = "Word length: " + c.getEncodedStringWordLength();
+            }
+            catch (Exception)
+            {
+                label15.Text = "Word length: ??";
+            }
         }
 
         private void numericUpDown2_ValueChanged(object sender, EventArgs e)
@@ -473,7 +490,7 @@ namespace SCCMaker
         Caption createClearCaption(string timecode)
         {
             Caption c = new Caption("{clear}");
-            c.StartTime = timecode;
+            c.StartTime = Timestamp.parse(timecode);
             return c;
         }
 
@@ -651,11 +668,11 @@ namespace SCCMaker
                                 c.DisplayStr = "<centre>" + c.DisplayStr.Replace("\n", "\n<centre>");
                             }
 
-                            c.StartTime = zeroTime;
-                            c.EndTime = zeroTime;
+                            c.StartTime = Timestamp.Zero;
+                            c.EndTime = Timestamp.Zero;
                             captionList.Add(c);
                             System.Diagnostics.Debug.WriteLine(Environment.NewLine + captionList[h].DisplayStr);
-                            System.Diagnostics.Debug.WriteLine(captionList[h].ToString(fpsSelector.Value));
+                            System.Diagnostics.Debug.WriteLine(captionList[h].ToString());
 
                         }
 
@@ -670,24 +687,53 @@ namespace SCCMaker
                 else if (openFileDialog1.FileName.EndsWith(".sccip"))
                 {
                     BinaryReader r = new BinaryReader(File.Open(openFileDialog1.FileName, FileMode.Open), Encoding.UTF8);
-                    int len = r.ReadInt32();
-                    captionList = new List<Caption>(len);
-                    captionList.Clear();
-                    for(int i = 0; i < len; i++)
-                    {
-                        Caption c = new Caption("");
-                        c.StartTime = r.ReadString();
-                        c.EndTime = r.ReadString();
-                        c.Arguments = r.ReadString();
-                        c.DisplayStr = r.ReadString();
-                        captionList.Add(c);
+                    string fileVersion = r.ReadString();
 
-                        System.Diagnostics.Debug.WriteLine(Environment.NewLine + captionList[i].DisplayStr);
-                        System.Diagnostics.Debug.WriteLine(captionList[i].ToString(fpsSelector.Value));
+                    if (fileVersion.Equals(Strings.saveVersion_v2))
+                    {
+                        fpsSelector.Value = r.ReadDecimal();
+                        checkBox2.Checked = r.ReadBoolean(); //Drop frame
+                        int len = r.ReadInt32();
+                        captionList = new List<Caption>(len);
+                        captionList.Clear();
+                        for (int i = 0; i < len; i++)
+                        {
+                            Caption c = new Caption("");
+                            c.StartTime = Timestamp.parse(r.ReadString());
+                            c.EndTime = Timestamp.parse(r.ReadString());
+                            c.Arguments = r.ReadString();
+                            c.DisplayStr = r.ReadString();
+                            captionList.Add(c);
+
+                            System.Diagnostics.Debug.WriteLine(Environment.NewLine + captionList[i].DisplayStr);
+                            System.Diagnostics.Debug.WriteLine(captionList[i].ToString());
+                        }
+                        r.Close();
+                        saveFileDialog.FileName = openFileDialog1.FileName;
+                        firstSave = false;
                     }
-                    r.Close();
-                    saveFileDialog.FileName = openFileDialog1.FileName;
-                    firstSave = false;
+                    else //For legacy versions (pretty much applies solely to me)
+                    {
+                        r.BaseStream.Seek(0, SeekOrigin.Begin); //Reset base stream to beginning
+                        int len = r.ReadInt32();
+                        captionList = new List<Caption>(len);
+                        captionList.Clear();
+                        for (int i = 0; i < len; i++)
+                        {
+                            Caption c = new Caption("");
+                            c.StartTime = Timestamp.parse(r.ReadString());
+                            c.EndTime = Timestamp.parse(r.ReadString());
+                            c.Arguments = r.ReadString();
+                            c.DisplayStr = r.ReadString();
+                            captionList.Add(c);
+
+                            System.Diagnostics.Debug.WriteLine(Environment.NewLine + captionList[i].DisplayStr);
+                            System.Diagnostics.Debug.WriteLine(captionList[i].ToString());
+                        }
+                        r.Close();
+                        saveFileDialog.FileName = openFileDialog1.FileName;
+                        firstSave = false;
+                    }
                 }
 
                 numericUpDown1.Value = 1;
@@ -705,8 +751,8 @@ namespace SCCMaker
                 label11.Text = "Total captions: " + captionList.Count;
                 int newVal = (int)(sender as NumericUpDown).Value - 1;
                 richTextBox1.Text = captionList[newVal].DisplayStr;
-                startTimeBox.Text = captionList[newVal].StartTime;
-                endTimeBox.Text = captionList[newVal].EndTime;
+                startTimeBox.Text = captionList[newVal].StartTime.ToString();
+                endTimeBox.Text = captionList[newVal].EndTime.ToString();
                 string[] args = captionList[newVal].Arguments.Split(',');
                 switch (args[0])
                 {
@@ -725,8 +771,8 @@ namespace SCCMaker
                     prevStartLabel.Text = "--:--:--:--";
                     prevEndLabel.Text = "--:--:--:--";
                     nextCaptionLabel.Text = captionList[newVal + 1].DisplayStr;
-                    nextStartLabel.Text = captionList[newVal + 1].StartTime;
-                    nextEndLabel.Text = captionList[newVal + 1].EndTime;
+                    nextStartLabel.Text = captionList[newVal + 1].StartTime.ToString();
+                    nextEndLabel.Text = captionList[newVal + 1].EndTime.ToString();
                 }
                 else if (newVal + 1 == 1) //Is first and only index
                 {
@@ -738,8 +784,8 @@ namespace SCCMaker
                 else if (newVal + 1 == captionList.Count) //Is last index
                 {
                     prevCaptionLabel.Text = captionList[newVal - 1].DisplayStr;
-                    prevStartLabel.Text = captionList[newVal - 1].StartTime;
-                    prevEndLabel.Text = captionList[newVal - 1].EndTime;
+                    prevStartLabel.Text = captionList[newVal - 1].StartTime.ToString();
+                    prevEndLabel.Text = captionList[newVal - 1].EndTime.ToString();
                     nextCaptionLabel.Text = "---------------------";
                     nextStartLabel.Text = "--:--:--:--";
                     nextEndLabel.Text = "--:--:--:--";
@@ -747,16 +793,16 @@ namespace SCCMaker
                 else //Every other case
                 {
                     prevCaptionLabel.Text = captionList[newVal - 1].DisplayStr;
-                    prevStartLabel.Text = captionList[newVal - 1].StartTime;
-                    prevEndLabel.Text = captionList[newVal - 1].EndTime;
+                    prevStartLabel.Text = captionList[newVal - 1].StartTime.ToString();
+                    prevEndLabel.Text = captionList[newVal - 1].EndTime.ToString();
                     nextCaptionLabel.Text = captionList[newVal + 1].DisplayStr;
-                    nextStartLabel.Text = captionList[newVal + 1].StartTime;
-                    nextEndLabel.Text = captionList[newVal + 1].EndTime;
+                    nextStartLabel.Text = captionList[newVal + 1].StartTime.ToString();
+                    nextEndLabel.Text = captionList[newVal + 1].EndTime.ToString();
                 }
             }
             else
             {
-                statusBar.Text = "Please either load a transcipt or press the \"Save && Add New\" button first.";
+                statusBar.Text = Strings.edit_changeActive_transcriptNull;
                 System.Media.SystemSounds.Beep.Play();
             }
         }
@@ -787,24 +833,24 @@ namespace SCCMaker
                                 continue;
                             }
                             if (!captionList[i].StartTime.Equals(captionList[i - 1].EndTime))
-                                listToWrite.Add(createClearCaption(captionList[i - 1].EndTime));
+                                listToWrite.Add(createClearCaption(captionList[i - 1].EndTime.ToString()));
                             listToWrite.Add(captionList[i].Clone());
                         }
-                        listToWrite.Add(createClearCaption(captionList[captionList.Count - 1].EndTime));
+                        listToWrite.Add(createClearCaption(captionList[captionList.Count - 1].EndTime.ToString()));
 
                         using (StreamWriter vttWriter = new StreamWriter(s.FileName))
                         {
                             vttWriter.Write("Scenarist_SCC V1.0\r\n\r\n");
                             foreach (Caption c in listToWrite)
                             {
-                                vttWriter.Write(c.ToString(fpsSelector.Value));
+                                vttWriter.Write(c.ToString());
                                 vttWriter.Write("\r\n\r\n");
                             }
                         }
-                        statusBar.Text = "Export to SCC successful.";
-                    } else statusBar.Text = "Export failed. No captions TO export (size = 0).";
-                } else statusBar.Text = "Export failed. No captions TO export.";
-            } else statusBar.Text = "Export cancelled by user.";
+                        statusBar.Text = Strings.export_success;
+                    } else statusBar.Text = Strings.export_fail_transcriptEmpty + " (size = 0).";
+                } else statusBar.Text = Strings.export_fail_transcriptEmpty;
+            } else statusBar.Text = Strings.export_fail_userCancel;
         }
 
         private bool updateCurrentCaptionInList()
@@ -814,8 +860,10 @@ namespace SCCMaker
                     if (isTimecode(startTimeBox.Text) && isTimecode(endTimeBox.Text))
                     {
                         int curIndex = (int)numericUpDown1.Value - 1;
-                        captionList[curIndex].StartTime = startTimeBox.Text;
-                        captionList[curIndex].EndTime = endTimeBox.Text;
+                        string startTime = startTimeBox.Text.Replace(';', ':');
+                        string endTime = endTimeBox.Text.Replace(';', ':');
+                        captionList[curIndex].StartTime = Timestamp.parse(startTime);
+                        captionList[curIndex].EndTime = Timestamp.parse(endTime);
                         captionList[curIndex].Arguments = generateCaptionArguments(captionTypeSelector.SelectedIndex, rowSelector.Value, curIndex == 0);
                         captionList[curIndex].DisplayStr = richTextBox1.Text.Replace("\r\n", "\n");
                         return true;
@@ -841,31 +889,31 @@ namespace SCCMaker
                         if (numericUpDown1.Value >= captionList.Count)
                         {
                             numericUpDown1_ValueChanged(numericUpDown1, null);
-                            statusBar.Text = "Recorded. End of transcript.";
+                            statusBar.Text = Strings.edit_record_success_end;
                             System.Media.SystemSounds.Beep.Play();
                         }
                         else
                         {
                             if (checkBox1.Checked)
                             {
-                                captionList[curIndex + 1].StartTime = captionList[curIndex].EndTime;
-                                string[] time = captionList[curIndex].EndTime.Split(':');
-                                captionList[curIndex + 1].EndTime = Caption.getTimeCode(Convert.ToDecimal(time[0]), Convert.ToDecimal(time[1]), Convert.ToDecimal(time[2]) + 1, Convert.ToDecimal(time[3]));
+                                captionList[curIndex + 1].StartTime = captionList[curIndex].EndTime.Clone();
+                                captionList[curIndex + 1].EndTime = captionList[curIndex + 1].StartTime.Clone();
+                                captionList[curIndex + 1].EndTime.Second++;
                             }
                             numericUpDown1.Value++;
                             numericUpDown1_ValueChanged(numericUpDown1, null);
-                            statusBar.Text = "Recorded. Next caption ready.";
+                            statusBar.Text = Strings.edit_record_success_continue;
                         }
                     }
                     else
                     {
-                        statusBar.Text = "Record failed. At least one of the timecodes are not formatted correctly. Try again.";
+                        statusBar.Text = Strings.edit_record_fail_timecodeFormat;
                         System.Media.SystemSounds.Beep.Play();
                     }
                 }
-                else statusBar.Text = "Record failed. You must first load a caption file, transcript, or click \"Record && Add New\".";
+                else statusBar.Text = Strings.edit_record_fail_transcriptNull;
             }
-            else statusBar.Text = "Record failed. You must first load a caption file, transcript, or click \"Record && Add New\".";
+            else statusBar.Text = Strings.edit_record_fail_transcriptNull;
         }
 
         private void btn_saveAndAddNew_Click(object sender, EventArgs e)
@@ -881,14 +929,14 @@ namespace SCCMaker
                         Caption c = new Caption("");
                         if (checkBox1.Checked)
                         {
-                            c.StartTime = captionList[curIndex].EndTime;
-                            string[] time = captionList[curIndex].EndTime.Split(':');
-                            c.EndTime = Caption.getTimeCode(Convert.ToDecimal(time[0]), Convert.ToDecimal(time[1]), Convert.ToDecimal(time[2]) + 1, Convert.ToDecimal(time[3]));
+                            captionList[curIndex + 1].StartTime = captionList[curIndex].EndTime.Clone();
+                            captionList[curIndex + 1].EndTime = captionList[curIndex + 1].StartTime.Clone();
+                            captionList[curIndex + 1].EndTime.Second++;
                         }
                         else
                         {
-                            c.StartTime = captionList[curIndex].StartTime;
-                            c.EndTime = captionList[curIndex].EndTime;
+                            c.StartTime = captionList[curIndex].StartTime.Clone();
+                            c.EndTime = captionList[curIndex].EndTime.Clone();
                         }
                         if (rowSelector.Value + captionList[curIndex].DisplayStr.Split('\n').Length >= 15)
                             c.Arguments = generateCaptionArguments(captionTypeSelector.SelectedIndex, 15, false);
@@ -897,11 +945,11 @@ namespace SCCMaker
                         captionList.Insert(curIndex + 1, c);
                         numericUpDown1.Maximum++;
                         numericUpDown1.Value++;
-                        statusBar.Text = "Recorded. Inserted new caption at current position.";
+                        statusBar.Text = Strings.edit_record_success_addNew;
                     }
                     else
                     {
-                        statusBar.Text = "Record failed. At least one of the timecodes are not formatted correctly. Try again.";
+                        statusBar.Text = Strings.edit_record_fail_timecodeFormat;
                         System.Media.SystemSounds.Beep.Play();
                     }
                 }
@@ -915,7 +963,10 @@ namespace SCCMaker
                         //Create list, first entry, and save it
                         captionList = new List<Caption>();
                         Caption c = new Caption(richTextBox1.Text.Replace("\r\n", "\n"));
-                        c.StartTime = startTimeBox.Text; c.EndTime = endTimeBox.Text;
+                        string startTime = startTimeBox.Text;
+                        c.StartTime = Timestamp.parse(startTime.Replace(';', ':'));
+                        string endTime = endTimeBox.Text;
+                        c.EndTime = Timestamp.parse(endTime.Replace(';', ':'));
                         c.Arguments = generateCaptionArguments(captionTypeSelector.SelectedIndex, rowSelector.Value, true);
                         captionList.Add(c);
 
@@ -923,14 +974,14 @@ namespace SCCMaker
                         Caption d = new Caption("");
                         if (checkBox1.Checked)
                         {
-                            d.StartTime = c.EndTime;
-                            string[] time = c.EndTime.Split(':');
-                            d.EndTime = Caption.getTimeCode(Convert.ToDecimal(time[0]), Convert.ToDecimal(time[1]), Convert.ToDecimal(time[2]) + 1, Convert.ToDecimal(time[3]));
+                            d.StartTime = c.EndTime.Clone();
+                            d.EndTime = d.StartTime.Clone();
+                            d.EndTime.Second++;
                         }
                         else
                         {
-                            d.StartTime = c.StartTime;
-                            d.EndTime = c.EndTime;
+                            d.StartTime = c.StartTime.Clone();
+                            d.EndTime = c.EndTime.Clone();
                         }
                         d.Arguments = generateCaptionArguments(captionTypeSelector.SelectedIndex, rowSelector.Value, true);
                         captionList.Add(d);
@@ -938,9 +989,9 @@ namespace SCCMaker
                         numericUpDown1.Minimum = 1;
                         numericUpDown1.Maximum = 2;
                         numericUpDown1.Value = 2;
-                        statusBar.Text = "(WARNING VERSION) Created new transcript and recorded given info. New caption ready.";
+                        statusBar.Text = "(WARNING VERSION) " + Strings.edit_record_success_addNew_fromNew;
                     }
-                    else statusBar.Text = "(WARNING VERSION) Create and record failed. Improper timecode(s).";
+                    else statusBar.Text = "(WARNING VERSION) " + Strings.edit_record_fail_timecodeFormat_fromNew;
                 }
             }
             else
@@ -950,7 +1001,10 @@ namespace SCCMaker
                     //Create list, first entry, and save it
                     captionList = new List<Caption>();
                     Caption c = new Caption(richTextBox1.Text.Replace("\r\n", "\n"));
-                    c.StartTime = startTimeBox.Text; c.EndTime = endTimeBox.Text;
+                    string startTime = startTimeBox.Text;
+                    c.StartTime = Timestamp.parse(startTime.Replace(';', ':'));
+                    string endTime = endTimeBox.Text;
+                    c.EndTime = Timestamp.parse(endTime.Replace(';', ':'));
                     c.Arguments = generateCaptionArguments(captionTypeSelector.SelectedIndex, rowSelector.Value, true);
                     captionList.Add(c);
 
@@ -958,14 +1012,14 @@ namespace SCCMaker
                     Caption d = new Caption("");
                     if (checkBox1.Checked)
                     {
-                        d.StartTime = c.EndTime;
-                        string[] time = c.EndTime.Split(':');
-                        d.EndTime = Caption.getTimeCode(Convert.ToDecimal(time[0]), Convert.ToDecimal(time[1]), Convert.ToDecimal(time[2]) + 1, Convert.ToDecimal(time[3]));
+                        d.StartTime = c.EndTime.Clone();
+                        d.EndTime = d.StartTime.Clone();
+                        d.EndTime.Second++;
                     }
                     else
                     {
-                        d.StartTime = c.StartTime;
-                        d.EndTime = c.EndTime;
+                        d.StartTime = c.StartTime.Clone();
+                        d.EndTime = c.EndTime.Clone();
                     }
                     d.Arguments = generateCaptionArguments(captionTypeSelector.SelectedIndex, rowSelector.Value, true);
                     captionList.Add(d);
@@ -973,9 +1027,9 @@ namespace SCCMaker
                     numericUpDown1.Minimum = 1;
                     numericUpDown1.Maximum = 2;
                     numericUpDown1.Value = 2;
-                    statusBar.Text = "Created new transcript and recorded given info. New caption ready.";
+                    statusBar.Text = Strings.edit_record_success_addNew_fromNew;
                 }
-                else statusBar.Text = "Create and record failed. At least one of the timecodes are not formatted correctly.";
+                else statusBar.Text = Strings.edit_record_fail_timecodeFormat_fromNew;
             }
         }
 
@@ -1038,7 +1092,7 @@ namespace SCCMaker
                     statusBar.Text = "Updated this index, and... ";
                 }
             }
-            System.Diagnostics.Debug.WriteLine(captionList[(int)numericUpDown1.Value - 1].ToString(fpsSelector.Value));
+            System.Diagnostics.Debug.WriteLine(captionList[(int)numericUpDown1.Value - 1].ToString());
             statusBar.Text += "Printed to console.";
         }
 
@@ -1071,20 +1125,23 @@ namespace SCCMaker
                         
                         using (BinaryWriter w = new BinaryWriter(s.OpenFile(), Encoding.UTF8))
                         {
+                            w.Write(Strings.saveVersion_v2);
+                            w.Write(fpsSelector.Value);
+                            w.Write(checkBox2.Checked); //Drop frame
                             w.Write(captionList.Count);
                             for (int i = 0; i < captionList.Count; i++)
                             {
                                 Caption c = captionList[i];
-                                w.Write(c.StartTime);
-                                w.Write(c.EndTime);
+                                w.Write(c.StartTime.ToString());
+                                w.Write(c.EndTime.ToString());
                                 w.Write(c.Arguments);
                                 w.Write(c.DisplayStr);
                             }
                         }
-                        statusBar.Text = "Save successful.";
-                    } else statusBar.Text = "Save failed. No captions TO save (size = 0).";
-                } else statusBar.Text = "Save failed. No captions TO save.";
-            } else statusBar.Text = "Save cancelled by user.";
+                        statusBar.Text = Strings.save_success;
+                    } else statusBar.Text = Strings.save_fail_transcriptEmpty + " (size = 0).";
+                } else statusBar.Text = Strings.save_fail_transcriptEmpty;
+            } else statusBar.Text = Strings.save_fail_userCancel;
         }
 
         private void deleteThisBtn_Click(object sender, EventArgs e)
@@ -1098,8 +1155,8 @@ namespace SCCMaker
                     else captionList.RemoveAt((int)--numericUpDown1.Value);
                     numericUpDown1.Maximum--;
                     numericUpDown1_ValueChanged(numericUpDown1, null);
-                } else statusBar.Text = "Remove failed. Removing would create an empty transcript.";
-            } else statusBar.Text = "Remove failed. No active transcipt.";
+                } else statusBar.Text = Strings.edit_remove_fail_sizeOne;
+            } else statusBar.Text = Strings.edit_remove_fail_transcriptNull;
         }
 
         private void button9_Click(object sender, EventArgs e)
@@ -1152,6 +1209,16 @@ namespace SCCMaker
         private void giveEndBoxFocus(object sender, EventArgs e)
         {
             endBoxGotFocus = true;
+        }
+
+        private void checkBox2_CheckedChanged(object sender, EventArgs e)
+        {
+            Timestamp.DropFrame = checkBox2.Checked;
+        }
+
+        private void fpsSelector_ValueChanged(object sender, EventArgs e)
+        {
+            Timestamp.FrameRate = fpsSelector.Value;
         }
     }
 }

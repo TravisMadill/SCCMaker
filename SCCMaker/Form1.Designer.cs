@@ -88,6 +88,8 @@
             this.nextStartLabel = new System.Windows.Forms.Label();
             this.label19 = new System.Windows.Forms.Label();
             this.label20 = new System.Windows.Forms.Label();
+            this.label15 = new System.Windows.Forms.Label();
+            this.checkBox2 = new System.Windows.Forms.CheckBox();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.menuStrip1.SuspendLayout();
@@ -320,6 +322,7 @@
             0,
             0,
             131072});
+            this.fpsSelector.ValueChanged += new System.EventHandler(this.fpsSelector_ValueChanged);
             // 
             // label7
             // 
@@ -490,10 +493,26 @@
             resources.ApplyResources(this.label20, "label20");
             this.label20.Name = "label20";
             // 
+            // label15
+            // 
+            resources.ApplyResources(this.label15, "label15");
+            this.label15.Name = "label15";
+            // 
+            // checkBox2
+            // 
+            resources.ApplyResources(this.checkBox2, "checkBox2");
+            this.checkBox2.Checked = true;
+            this.checkBox2.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBox2.Name = "checkBox2";
+            this.checkBox2.UseVisualStyleBackColor = true;
+            this.checkBox2.CheckedChanged += new System.EventHandler(this.checkBox2_CheckedChanged);
+            // 
             // Form1
             // 
             resources.ApplyResources(this, "$this");
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this.checkBox2);
+            this.Controls.Add(this.label15);
             this.Controls.Add(this.nextEndLabel);
             this.Controls.Add(this.nextStartLabel);
             this.Controls.Add(this.label19);
@@ -621,6 +640,8 @@
         private System.Windows.Forms.Label nextStartLabel;
         private System.Windows.Forms.Label label19;
         private System.Windows.Forms.Label label20;
+        private System.Windows.Forms.Label label15;
+        private System.Windows.Forms.CheckBox checkBox2;
     }
 }
 
