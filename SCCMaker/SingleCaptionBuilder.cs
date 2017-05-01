@@ -84,11 +84,11 @@ namespace SCCMaker
 
             return positions.Count;
 
-            Console.WriteLine("{0} occurrences", positions.Count);
+            /*Console.WriteLine("{0} occurrences", positions.Count);
             foreach (var p in positions)
             {
                 Console.WriteLine(p);
-            }
+            }*/
         }
 
         /// <summary>
@@ -104,7 +104,9 @@ namespace SCCMaker
             sb.Append(" ");
             buildAndAppendStringContent(c);
             sb.Append(buildEndingBits(c));
-            return sb.ToString();
+            if (sb.ToString().EndsWith(" "))
+                return sb.ToString().Substring(0, sb.ToString().LastIndexOf(' '));
+            else return sb.ToString();
         }
 
         private static string buildPreamble(Caption c)
