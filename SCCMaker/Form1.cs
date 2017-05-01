@@ -32,8 +32,6 @@ namespace SCCMaker
 
         List<Caption> captionList;
 
-        public static string zeroTime = "00:00:00:00";
-
         ComponentResourceManager resources = new ComponentResourceManager(typeof(Form1));
         public int paintProblem = 0;
         public string paintProblemStr = "";
@@ -689,24 +687,52 @@ namespace SCCMaker
                 else if (openFileDialog1.FileName.EndsWith(".sccip"))
                 {
                     BinaryReader r = new BinaryReader(File.Open(openFileDialog1.FileName, FileMode.Open), Encoding.UTF8);
-                    int len = r.ReadInt32();
-                    captionList = new List<Caption>(len);
-                    captionList.Clear();
-                    for(int i = 0; i < len; i++)
-                    {
-                        Caption c = new Caption("");
-                        c.StartTime = Timestamp.parse(r.ReadString());
-                        c.EndTime = Timestamp.parse(r.ReadString());
-                        c.Arguments = r.ReadString();
-                        c.DisplayStr = r.ReadString();
-                        captionList.Add(c);
+                    string fileVersion = r.ReadString();
 
-                        System.Diagnostics.Debug.WriteLine(Environment.NewLine + captionList[i].DisplayStr);
-                        System.Diagnostics.Debug.WriteLine(captionList[i].ToString());
+                    if (fileVersion.Equals(Strings.saveVersion_v2))
+                    {
+                        fpsSelector.Value = r.ReadDecimal();
+                        int len = r.ReadInt32();
+                        captionList = new List<Caption>(len);
+                        captionList.Clear();
+                        for (int i = 0; i < len; i++)
+                        {
+                            Caption c = new Caption("");
+                            c.StartTime = Timestamp.parse(r.ReadString());
+                            c.EndTime = Timestamp.parse(r.ReadString());
+                            c.Arguments = r.ReadString();
+                            c.DisplayStr = r.ReadString();
+                            captionList.Add(c);
+
+                            System.Diagnostics.Debug.WriteLine(Environment.NewLine + captionList[i].DisplayStr);
+                            System.Diagnostics.Debug.WriteLine(captionList[i].ToString());
+                        }
+                        r.Close();
+                        saveFileDialog.FileName = openFileDialog1.FileName;
+                        firstSave = false;
                     }
-                    r.Close();
-                    saveFileDialog.FileName = openFileDialog1.FileName;
-                    firstSave = false;
+                    else //For legacy versions (pretty much applies solely to me)
+                    {
+                        r.BaseStream.Seek(0, SeekOrigin.Begin); //Reset base stream to beginning
+                        int len = r.ReadInt32();
+                        captionList = new List<Caption>(len);
+                        captionList.Clear();
+                        for (int i = 0; i < len; i++)
+                        {
+                            Caption c = new Caption("");
+                            c.StartTime = Timestamp.parse(r.ReadString());
+                            c.EndTime = Timestamp.parse(r.ReadString());
+                            c.Arguments = r.ReadString();
+                            c.DisplayStr = r.ReadString();
+                            captionList.Add(c);
+
+                            System.Diagnostics.Debug.WriteLine(Environment.NewLine + captionList[i].DisplayStr);
+                            System.Diagnostics.Debug.WriteLine(captionList[i].ToString());
+                        }
+                        r.Close();
+                        saveFileDialog.FileName = openFileDialog1.FileName;
+                        firstSave = false;
+                    }
                 }
 
                 numericUpDown1.Value = 1;
@@ -775,7 +801,7 @@ namespace SCCMaker
             }
             else
             {
-                statusBar.Text = "Please either load a transcipt or press the \"Save && Add New\" button first.";
+                statusBar.Text = Strings.edit_changeActive_transcriptNull;
                 System.Media.SystemSounds.Beep.Play();
             }
         }
@@ -820,10 +846,10 @@ namespace SCCMaker
                                 vttWriter.Write("\r\n\r\n");
                             }
                         }
-                        statusBar.Text = "Export to SCC successful.";
-                    } else statusBar.Text = "Export failed. No captions TO export (size = 0).";
-                } else statusBar.Text = "Export failed. No captions TO export.";
-            } else statusBar.Text = "Export cancelled by user.";
+                        statusBar.Text = Strings.export_success;
+                    } else statusBar.Text = Strings.export_fail_transcriptEmpty + " (size = 0).";
+                } else statusBar.Text = Strings.export_fail_transcriptEmpty;
+            } else statusBar.Text = Strings.export_fail_userCancel;
         }
 
         private bool updateCurrentCaptionInList()
@@ -862,7 +888,7 @@ namespace SCCMaker
                         if (numericUpDown1.Value >= captionList.Count)
                         {
                             numericUpDown1_ValueChanged(numericUpDown1, null);
-                            statusBar.Text = "Recorded. End of transcript.";
+                            statusBar.Text = Strings.edit_record_success_end;
                             System.Media.SystemSounds.Beep.Play();
                         }
                         else
@@ -875,18 +901,18 @@ namespace SCCMaker
                             }
                             numericUpDown1.Value++;
                             numericUpDown1_ValueChanged(numericUpDown1, null);
-                            statusBar.Text = "Recorded. Next caption ready.";
+                            statusBar.Text = Strings.edit_record_success_continue;
                         }
                     }
                     else
                     {
-                        statusBar.Text = "Record failed. At least one of the timecodes are not formatted correctly. Try again.";
+                        statusBar.Text = Strings.edit_record_fail_timecodeFormat;
                         System.Media.SystemSounds.Beep.Play();
                     }
                 }
-                else statusBar.Text = "Record failed. You must first load a caption file, transcript, or click \"Record && Add New\".";
+                else statusBar.Text = Strings.edit_record_fail_transcriptNull;
             }
-            else statusBar.Text = "Record failed. You must first load a caption file, transcript, or click \"Record && Add New\".";
+            else statusBar.Text = Strings.edit_record_fail_transcriptNull;
         }
 
         private void btn_saveAndAddNew_Click(object sender, EventArgs e)
@@ -918,11 +944,11 @@ namespace SCCMaker
                         captionList.Insert(curIndex + 1, c);
                         numericUpDown1.Maximum++;
                         numericUpDown1.Value++;
-                        statusBar.Text = "Recorded. Inserted new caption at current position.";
+                        statusBar.Text = Strings.edit_record_success_addNew;
                     }
                     else
                     {
-                        statusBar.Text = "Record failed. At least one of the timecodes are not formatted correctly. Try again.";
+                        statusBar.Text = Strings.edit_record_fail_timecodeFormat;
                         System.Media.SystemSounds.Beep.Play();
                     }
                 }
@@ -962,9 +988,9 @@ namespace SCCMaker
                         numericUpDown1.Minimum = 1;
                         numericUpDown1.Maximum = 2;
                         numericUpDown1.Value = 2;
-                        statusBar.Text = "(WARNING VERSION) Created new transcript and recorded given info. New caption ready.";
+                        statusBar.Text = "(WARNING VERSION) " + Strings.edit_record_success_addNew_fromNew;
                     }
-                    else statusBar.Text = "(WARNING VERSION) Create and record failed. Improper timecode(s).";
+                    else statusBar.Text = "(WARNING VERSION) " + Strings.edit_record_fail_timecodeFormat_fromNew;
                 }
             }
             else
@@ -1000,9 +1026,9 @@ namespace SCCMaker
                     numericUpDown1.Minimum = 1;
                     numericUpDown1.Maximum = 2;
                     numericUpDown1.Value = 2;
-                    statusBar.Text = "Created new transcript and recorded given info. New caption ready.";
+                    statusBar.Text = Strings.edit_record_success_addNew_fromNew;
                 }
-                else statusBar.Text = "Create and record failed. At least one of the timecodes are not formatted correctly.";
+                else statusBar.Text = Strings.edit_record_fail_timecodeFormat_fromNew;
             }
         }
 
@@ -1098,6 +1124,8 @@ namespace SCCMaker
                         
                         using (BinaryWriter w = new BinaryWriter(s.OpenFile(), Encoding.UTF8))
                         {
+                            w.Write(Strings.saveVersion_v2);
+                            w.Write(fpsSelector.Value);
                             w.Write(captionList.Count);
                             for (int i = 0; i < captionList.Count; i++)
                             {
@@ -1108,10 +1136,10 @@ namespace SCCMaker
                                 w.Write(c.DisplayStr);
                             }
                         }
-                        statusBar.Text = "Save successful.";
-                    } else statusBar.Text = "Save failed. No captions TO save (size = 0).";
-                } else statusBar.Text = "Save failed. No captions TO save.";
-            } else statusBar.Text = "Save cancelled by user.";
+                        statusBar.Text = Strings.save_success;
+                    } else statusBar.Text = Strings.save_fail_transcriptEmpty + " (size = 0).";
+                } else statusBar.Text = Strings.save_fail_transcriptEmpty;
+            } else statusBar.Text = Strings.save_fail_userCancel;
         }
 
         private void deleteThisBtn_Click(object sender, EventArgs e)
@@ -1126,7 +1154,7 @@ namespace SCCMaker
                     numericUpDown1.Maximum--;
                     numericUpDown1_ValueChanged(numericUpDown1, null);
                 } else statusBar.Text = "Remove failed. Removing would create an empty transcript.";
-            } else statusBar.Text = "Remove failed. No active transcipt.";
+            } else statusBar.Text = Strings.edit_remove_fail_transcriptNull;
         }
 
         private void button9_Click(object sender, EventArgs e)
