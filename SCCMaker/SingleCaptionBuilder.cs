@@ -114,7 +114,7 @@ namespace SCCMaker
             StringBuilder preamble = new StringBuilder();
             string[] args = c.Arguments.Split(',');
             preamble.Append(getParityBytes(Caption.commandCodes[args[0]]));
-            if (args[0].Equals("PopOn"))
+            if (args[0].Equals("Popon"))
             {
                 preamble.Append(" ");
                 preamble.Append(getCommandParityCode("ClearBuffer"));

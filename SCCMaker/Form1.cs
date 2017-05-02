@@ -628,10 +628,13 @@ namespace SCCMaker
                                         break;
                                 }
                                 if (args[0].StartsWith("row") && arg.Equals("???"))
+                                { // arguments given was just {row ##}, default to pop-on, centre align
                                     arg = generateCaptionArguments(0, Convert.ToInt32(args[0].Replace("row", "")) > 15 ? 15 : Convert.ToInt32(args[0].Replace("row", "")), h == 0);
+                                    c.DisplayStr = "<centre>" + c.DisplayStr.Replace("\n", "\n<centre>");
+                                }
 
-                                if (args.Length > 1 && !args[0].Equals("s2") && !args[0].Equals("s3") && !args[0].Equals("s4") && !args[0].Equals("paint") && !arg.Equals("???"))
-                                {
+                                if (args.Length > 1 && !arg.Contains(',') && !args[0].Equals("s2") && !args[0].Equals("s3") && !args[0].Equals("s4") && !args[0].Equals("paint") && !arg.Equals("???"))
+                                { // argument given specifies row first before type ({row ##, pop})
                                     switch (args[1])
                                     {
                                         case "pop":
@@ -646,10 +649,10 @@ namespace SCCMaker
                                             break;
                                     }
                                 }
-                                else if (!args[0].Equals("s2") && !args[0].Equals("s3") && !args[0].Equals("s4") && !args[0].Equals("paint") && !arg.Equals("???"))
+                                else if (!arg.Contains(',') && !args[0].Equals("s2") && !args[0].Equals("s3") && !args[0].Equals("s4") && !args[0].Equals("paint") && !arg.Equals("???"))
                                     arg = generateCaptionArguments(0, Convert.ToInt32(arg), h == 0);
                                 
-                                if (args.Length > 1 && !arg.Equals("???") && (args[0].Equals("s2") || args[0].Equals("s3") || args[0].Equals("s4") || args[0].Equals("paint")))
+                                if (args.Length > 1 && !arg.Contains(',') && !arg.Equals("???") && (args[0].Equals("s2") || args[0].Equals("s3") || args[0].Equals("s4") || args[0].Equals("paint")))
                                 {
                                     if (args[1].StartsWith("row"))
                                         args[1] = args[1].Replace("row", "");
@@ -662,8 +665,8 @@ namespace SCCMaker
                                     arg = generateCaptionArguments(0, 1, h == 0);
                                 c.Arguments = arg;
                             }
-                            else //Argument is empty
-                            {
+                            else
+                            { //Argument is empty, react the same as {bc} argument
                                 c.Arguments = generateCaptionArguments(0, 16 - c.DisplayStr.Split('\n').Length, h == 0);
                                 c.DisplayStr = "<centre>" + c.DisplayStr.Replace("\n", "\n<centre>");
                             }
