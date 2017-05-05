@@ -932,9 +932,9 @@ namespace SCCMaker
                         Caption c = new Caption("");
                         if (checkBox1.Checked)
                         {
-                            captionList[curIndex + 1].StartTime = captionList[curIndex].EndTime.Clone();
-                            captionList[curIndex + 1].EndTime = captionList[curIndex + 1].StartTime.Clone();
-                            captionList[curIndex + 1].EndTime.Second++;
+                            c.StartTime = captionList[curIndex].EndTime.Clone();
+                            c.EndTime = captionList[curIndex + 1].StartTime.Clone();
+                            c.EndTime.Second++;
                         }
                         else
                         {

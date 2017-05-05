@@ -429,11 +429,13 @@ namespace SCCMaker
             string[] args = c.Arguments.Split(',');
             if (args[0].Equals("Popon"))
             {
-                if (args[2].Equals("1"))
-                {
+                //if (args[2].Equals("1"))
+                //{
+                    //Uncomment the if statement if you don't need
+                    //the screen cleared before drawing the next caption
                     ending.Append(getCommandParityCode("ClearScreen"));
                     ending.Append(" ");
-                }
+                //}
                 ending.Append(getCommandParityCode("DisplayCaption"));
             }
             return ending.ToString();
