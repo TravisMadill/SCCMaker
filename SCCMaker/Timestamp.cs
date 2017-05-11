@@ -156,11 +156,11 @@ namespace SCCMaker
         public Timestamp getAsFinalized()
         {
             Timestamp t = new Timestamp();
+            t.IsFinalizedTimestamp = true;
             t.Hour = Hour;
             t.Minute = Minute;
             t.Second = Second;
-            t.Frame = (int)(Frame / FrameRate);
-            t.IsFinalizedTimestamp = true;
+            t.Frame = (int)((Frame / FrameRate) * 30);
             return t;
         }
     }

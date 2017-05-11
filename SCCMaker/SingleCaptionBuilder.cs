@@ -362,7 +362,7 @@ namespace SCCMaker
                                 encodedStr.Append(" ");
                                 break;
                             default:
-                                MessageBox.Show("Unknown command: " + String.Join(",", cmd));
+                                Console.WriteLine("Unknown command: " + String.Join(",", cmd));
                                 break;
                         }
                         k++;
