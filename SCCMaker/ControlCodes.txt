@@ -1,10 +1,12 @@
 ﻿//Controls
 Popon	14	20
+Backspace	14	21
 Rollup2	14	25
 Rollup3	14	26
 Rollup4	14	27
 Painton	14	29
 CarriageReturn	14	2d
+//TabOver: Moves cursor by indicated # of spaces, without using spaces themselves
 TabOver1	17	21
 TabOver2	17	22
 TabOver3	17	23
@@ -28,6 +30,24 @@ Magenta	11	2c
 Magenta_	11	2d
 Italics	11	2e
 Italics_	11	2f
+//Background colours (not sure if it works -- experimental) (semi means semi-transparent)
+BGWhite	10	20
+BGSemiWhite	10	21
+BGGreen	10	22
+BGSemiGreen	10	23
+BGBlue	10	24
+BGSemiBlue	10	25
+BGCyan	10	26
+BGSemiCyan	10	27
+BGRed	10	28
+BGSemiRed	10	29
+BGYellow	10	2a
+BGSemiYellow	10	2b
+BGMagenta	10	2c
+BGSemiMagenta	10	2d
+BGBlack	10	2e
+BGSemiBlack	10	2f
+BGNone	17	2d
 //Styling (Preamble: Position)
 Row1	11
 Row2	11
