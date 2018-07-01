@@ -6,7 +6,7 @@ namespace SCCMaker
 {
     class Caption
 	{
-		public static Dictionary<char, string> charCodes = new Dictionary<char, string>();
+		public static Dictionary<char, int> charCodes = new Dictionary<char, int>();
 		public static Dictionary<string, char> specialCharRefs = new Dictionary<string, char>();
 		public static Dictionary<string, int> commandCodes = new Dictionary<string, int>();
 
@@ -82,5 +82,12 @@ namespace SCCMaker
 			}
 			else return Form1.oddParityTranslationMatrix[val].ToString("x2");
 		}
-	}
+
+        public static Caption createClearCaption(string timecode)
+        {
+            Caption c = new Caption("{clear}");
+            c.StartTime = Timestamp.parse(timecode);
+            return c;
+        }
+    }
 }

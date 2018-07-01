@@ -62,16 +62,16 @@ namespace SCCMaker
                 if (charcode.StartsWith("//")) //Skip the comment lines
                     continue;
                 string _charcode = charcode.Replace("\r", "");
-                string[] s = _charcode.Split('`');
+                string[] s = _charcode.Split('\t');
                 //System.Diagnostics.Debug.WriteLine(string.Join(",", s));
                 if (s.Length == 3)
                 {
-                    Caption.charCodes.Add(s[0][0], s[1]);
+                    Caption.charCodes.Add(s[0][0], int.Parse(s[1], System.Globalization.NumberStyles.HexNumber));
                     Caption.specialCharRefs.Add(s[2], s[0][0]);
                 }
                 else if (s.Length == 2)
                 {
-                    Caption.charCodes.Add(s[0][0], s[1]);
+                    Caption.charCodes.Add(s[0][0], int.Parse(s[1], System.Globalization.NumberStyles.HexNumber));
                 }
                 else
                 {
@@ -79,10 +79,10 @@ namespace SCCMaker
                 }
             }
             //Fallback character, solid bar
-            Caption.charCodes.Add('\0', "7f");
+            Caption.charCodes.Add('\0', 0x7f);
             Caption.specialCharRefs.Add("undefined", '\0');
             //Used for padding bytes to conform to byte -> word
-            Caption.charCodes.Add('\b', "80");
+            Caption.charCodes.Add('\b', 0x80);
             Caption.specialCharRefs.Add("wait", '\b');
 
             fs = new StreamReader(Application.StartupPath + @"\ControlCodes.txt");
@@ -487,13 +487,6 @@ namespace SCCMaker
             pictureBox1.Refresh();
         }
 
-        Caption createClearCaption(string timecode)
-        {
-            Caption c = new Caption("{clear}");
-            c.StartTime = Timestamp.parse(timecode);
-            return c;
-        }
-
         private string generateCaptionArguments(int type, decimal rowNum, bool isFirst)
         {
             string[] types = { "Popon", "Rollup2", "Rollup3", "Rollup4", "Painton" };
@@ -536,7 +529,7 @@ namespace SCCMaker
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
             openFileDialog1.FileName = "";
-            openFileDialog1.Filter = "All compatible files|*.txt;*.sccip|Transcripts|*.txt|SCC in progress file|*.sccip";
+            openFileDialog1.Filter = "All compatible files|*.scc;*.sccip;*.txt|Scenarist Closed Captioning file|*.scc|SCC in progress file|*.sccip|Transcripts|*.txt";
             openFileDialog1.ShowDialog();
         }
 
@@ -738,6 +731,169 @@ namespace SCCMaker
                         firstSave = false;
                     }
                 }
+                else if (openFileDialog1.FileName.EndsWith(".scc"))
+                {
+                    //Get file contents
+                    StreamReader r = new StreamReader(openFileDialog1.FileName);
+                    string[] file = Regex.Split(r.ReadToEnd(), @"(?:\r\n){2,}");
+                    r.Close();
+
+                    //Create reverse lookup dictionaries
+                    var charKeys = Caption.charCodes.ToDictionary(pair => pair.Value, pair => pair.Key);
+                    var specialCharKeys = Caption.specialCharRefs.ToDictionary(pair => pair.Value, pair => pair.Key);
+					Dictionary<int, string> commandKeys = new Dictionary<int, string>();
+					foreach(string commandKey in Caption.commandCodes.Keys)
+					{
+						if (Caption.commandCodes[commandKey] > 0x7f)
+							commandKeys.Add(Caption.commandCodes[commandKey], commandKey);
+						else if(commandKey.StartsWith("Row")) //Position codes
+						{
+							int rowNum = Convert.ToInt32(commandKey.Substring(3));
+							foreach(string innerKey in Caption.commandCodes.Keys)
+							{
+								if (Caption.commandCodes[innerKey] > 0x7f)
+									continue;
+								if (innerKey.Contains("Row"))
+									continue;
+
+								int combinedKey = (Caption.commandCodes[commandKey] << 8) | Caption.commandCodes[innerKey];
+								if (rowNum > 11)
+								{
+									if (rowNum % 2 == 1)
+									{
+										if (innerKey.StartsWith("Even"))
+											commandKeys.Add(combinedKey, string.Join(",", new string[] { "Row", rowNum.ToString(), innerKey.Substring(8, 1), innerKey.Contains("_").ToString() }));
+									}
+									else
+									{
+										if (innerKey.StartsWith("Odd"))
+											commandKeys.Add(combinedKey, string.Join(",", new string[] { "Row", rowNum.ToString(), innerKey.Substring(7, 1), innerKey.Contains("_").ToString() }));
+									}
+								}
+								else
+								{
+									if (rowNum % 2 == 1)
+									{
+										if (innerKey.StartsWith("Odd"))
+											commandKeys.Add(combinedKey, string.Join(",", new string[] { "Row", rowNum.ToString(), innerKey.Substring(7, 1), innerKey.Contains("_").ToString() }));
+									}
+									else
+									{
+										if (innerKey.StartsWith("Even"))
+											commandKeys.Add(combinedKey, string.Join(",", new string[] { "Row", rowNum.ToString(), innerKey.Substring(8, 1), innerKey.Contains("_").ToString() }));
+									}
+								}
+							}
+						}
+					}
+
+                    //Build caption list
+					captionList = new List<Caption>(file.Length);
+                    for (int i = 1; i < file.Length; i++)
+                    {
+                        string caption = file[i];
+						Console.WriteLine(caption);
+
+						if (caption == "")
+							continue;
+
+						Caption c = new Caption("");
+                        c.Arguments = generateCaptionArguments(0, -1, captionList.Count == 0);
+                        c.StartTime = Timestamp.parse(caption.Split('\t')[0]);
+                        c.StartTime.Frame = (int)((c.StartTime.Frame / 29.97m) * fpsSelector.Value);
+                        string disp = caption.Split('\t')[1];
+
+                        if (i > 1 && captionList.Count > 0)
+                        {
+                            captionList[captionList.Count - 1].EndTime = c.StartTime;
+                            if (disp.Replace(" ", "").Equals(SingleCaptionBuilder.getParityBytes(Caption.commandCodes["ClearScreen"])))
+                                continue;
+                        }
+
+                        foreach (string word in disp.Split(' '))
+                        {
+							if (word.Equals(""))
+								continue;
+                            int b = int.Parse(word, System.Globalization.NumberStyles.HexNumber) & 0x7f7f;
+                            int b1 = b & 0x7f;
+                            int b2 = (b >> 8) & 0x7f;
+                            if (b2 < 0x20) //Command or special char
+                            {
+                                if (charKeys.ContainsKey(b))
+                                {
+                                    char toAdd = charKeys[b];
+                                    if (SingleCaptionBuilder.charactersThatNeedSpaces.IndexOf(toAdd) != -1)
+                                        c.DisplayStr = c.DisplayStr.Substring(0, c.DisplayStr.Length - 1);
+                                    c.DisplayStr += toAdd;
+                                }
+                                else if (commandKeys.ContainsKey(b))
+                                {
+									if (commandKeys[b].StartsWith("Row,"))
+									{
+										string[] rowInfo = commandKeys[b].Split(',');
+										c.Arguments = string.Join(",", new string[] { c.Arguments.Split(',')[0], rowInfo[1].ToString(), Convert.ToInt32(captionList.Count < 2).ToString() });
+									}
+									else
+									{
+										switch (commandKeys[b])
+										{
+											case "Popon":
+												c.Arguments = generateCaptionArguments(0, Convert.ToDecimal(c.Arguments.Split(',')[1]), captionList.Count == 0);
+												break;
+											case "Rollup2":
+												c.Arguments = generateCaptionArguments(1, Convert.ToDecimal(c.Arguments.Split(',')[1]), captionList.Count == 0);
+												break;
+											case "Rollup3":
+												c.Arguments = generateCaptionArguments(2, Convert.ToDecimal(c.Arguments.Split(',')[1]), captionList.Count == 0);
+												break;
+											case "Rollup4":
+												c.Arguments = generateCaptionArguments(3, Convert.ToDecimal(c.Arguments.Split(',')[1]), captionList.Count == 0);
+												break;
+											case "Painton":
+												c.Arguments = generateCaptionArguments(4, Convert.ToDecimal(c.Arguments.Split(',')[1]), captionList.Count == 0);
+												break;
+											case "CarriageReturn":
+												if (!c.DisplayStr.Equals(""))
+													c.DisplayStr += Environment.NewLine;
+												break;
+											case "TabOver1":
+												c.DisplayStr += " ";
+												break;
+											case "TabOver2":
+												c.DisplayStr += "  ";
+												break;
+											case "TabOver3":
+												c.DisplayStr += "   ";
+												break;
+											case "ClearBuffer":
+											case "ClearScreen":
+											case "DisplayCaption":
+												break;
+												//Still need the stylings
+										}
+									}
+                                }
+
+								continue;
+                            }
+                            else
+							{
+								if (b2 != 0x7f && b2 != 0x00)
+									c.DisplayStr += charKeys[b2];
+								else if (b2 == 0x7f)
+									c.DisplayStr += '？'; //Full width question mark, so that it'll still go back into SCC format as "7f"
+
+								if (b1 != 0x7f && b1 != 0x00)
+                                    c.DisplayStr += charKeys[b1];
+                                else if (b1 == 0x7f)
+                                    c.DisplayStr += '？'; //Full width question mark, so that it'll still go back into SCC format as "7f"
+
+                            }
+                        }
+
+						captionList.Add(c);
+                    }
+                }
 
                 numericUpDown1.Value = 1;
                 numericUpDown1.Minimum = 1;
@@ -836,10 +992,10 @@ namespace SCCMaker
                                 continue;
                             }
                             if (!captionList[i].StartTime.Equals(captionList[i - 1].EndTime))
-                                listToWrite.Add(createClearCaption(captionList[i - 1].EndTime.ToString()));
+                                listToWrite.Add(Caption.createClearCaption(captionList[i - 1].EndTime.ToString()));
                             listToWrite.Add(captionList[i].Clone());
                         }
-                        listToWrite.Add(createClearCaption(captionList[captionList.Count - 1].EndTime.ToString()));
+                        listToWrite.Add(Caption.createClearCaption(captionList[captionList.Count - 1].EndTime.ToString()));
 
                         using (StreamWriter vttWriter = new StreamWriter(s.FileName))
                         {
@@ -933,7 +1089,7 @@ namespace SCCMaker
                         if (checkBox1.Checked)
                         {
                             c.StartTime = captionList[curIndex].EndTime.Clone();
-                            c.EndTime = captionList[curIndex + 1].StartTime.Clone();
+                            c.EndTime = c.StartTime.Clone();
                             c.EndTime.Second++;
                         }
                         else
@@ -1003,7 +1159,8 @@ namespace SCCMaker
                 {
                     //Create list, first entry, and save it
                     captionList = new List<Caption>();
-                    Caption c = new Caption(richTextBox1.Text.Replace("\r\n", "\n"));
+					firstSave = true;
+					Caption c = new Caption(richTextBox1.Text.Replace("\r\n", "\n"));
                     string startTime = startTimeBox.Text;
                     c.StartTime = Timestamp.parse(startTime.Replace(';', ':'));
                     string endTime = endTimeBox.Text;
@@ -1085,6 +1242,7 @@ namespace SCCMaker
                     captionList.Add(new Caption(""));
                     updateCurrentCaptionInList();
                     statusBar.Text = "Created a new transcript, and... ";
+					firstSave = true;
                 }
             }
             else
