@@ -12,7 +12,7 @@ namespace SCCMaker
         static StringBuilder sb;
         static StringBuilder encodedStr;
         static string prevByte;
-        static readonly string charactersThatNeedSpaces = @"‘’“”ÁÀÂÄÃÅåäãÇÉÈÊËëÎÍÌÏïìÓÒÕÔÖØòõöøßÚÙÛÜüù¡*–©·«»{}\^_¦~¥¤|┍┐└┘";
+        public static readonly string charactersThatNeedSpaces = @"‘’“”ÁÀÂÄÃÅåäãÇÉÈÊËëÎÍÌÏïìÓÒÕÔÖØòõöøßÚÙÛÜüù¡*–©·«»{}\^_¦~¥¤|┍┐└┘";
 
         /// <summary>
         /// Resets various objects that may have leftover data from
@@ -25,7 +25,7 @@ namespace SCCMaker
             prevByte = null;
         }
 
-        private static string getParityBytes(int val)
+        public static string getParityBytes(int val)
         {
             if (val > 0xff) //2 byte code
             {
@@ -34,7 +34,17 @@ namespace SCCMaker
                 sb.Append(Form1.oddParityTranslationMatrix[(val & 0xff)].ToString("x2"));
                 return sb.ToString();
             }
-            else return Form1.oddParityTranslationMatrix[val].ToString("x2");
+            else
+            {
+                try
+                {
+                    return Form1.oddParityTranslationMatrix[val].ToString("x2");
+                }
+                catch (Exception)
+                {
+                    return Form1.oddParityTranslationMatrix[0].ToString("x2");
+                }
+            }
         }
 
         private static string getCommandParityCode(string commandName)
@@ -227,7 +237,9 @@ namespace SCCMaker
                                 }
                                 encodedStr.Append(" ");
                                 curColour = command.Split(' ')[1].ToLowerInvariant();
-                                break;
+								if (j == 0)
+									encodedStr.Append(getCommandParityCode("Backspace") + " ");
+								break;
                             case "centre":
                             case "center":
                                 startCol = (32 - removeControlCodes(lines[i]).Length - countCommandsThatRequireSpaces(lines[i])) / 2;
@@ -253,6 +265,8 @@ namespace SCCMaker
                                     encodedStr.Append(getCommandParityCode("Italics"));
                                 isItalics = true;
                                 encodedStr.Append(" ");
+								if (j == 0)
+									encodedStr.Append(getCommandParityCode("Backspace") + " ");
                                 break;
                             case "u":
                                 if (pendingChars())
@@ -284,7 +298,9 @@ namespace SCCMaker
                                     default: throw new ArgumentException("Underline: Colour mismatch.");
                                 }
                                 encodedStr.Append(" ");
-                                break;
+								if (j == 0)
+									encodedStr.Append(getCommandParityCode("Backspace") + " ");
+								break;
                             case "/i":
                                 if (pendingChars())
                                     appendNextChar('\b', isItalics);
@@ -467,6 +483,8 @@ namespace SCCMaker
                     encodedStr.Append(prevByte);
                     if (charactersThatNeedSpaces.IndexOf(ch) != -1)
                     {
+						//If we're in the italics state now, use a wait symbol instead of a space
+						//The caption decoders themselves seem to be picky about this
                         if ((encodedStr.ToString().Contains(getCommandParityCode("Italics"))
                             || encodedStr.ToString().Contains(getCommandParityCode("Italics_")))
                             && !isItalics)
@@ -498,10 +516,10 @@ namespace SCCMaker
 
         private static string getCharCode(char c)
         {
-            if (Caption.charCodes.ContainsKey(c))
-                return Caption.charCodes[c];
+            if (Caption.charCodes.ContainsKey(c) && c != 128)
+                return getParityBytes(Caption.charCodes[c]);
             else Console.WriteLine("Undefined character: {0} ({0:D})", c);
-            return Caption.charCodes['\0'];
+            return getParityBytes(Caption.charCodes['\0']);
         }
     }
 }
