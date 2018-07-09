@@ -153,6 +153,8 @@ namespace SCCMaker
                 }
                 bool isItalics = false;
                 bool isUnderlined = false;
+				bool noVisibleCharsYet = true;
+				bool startingWithFormattingCodes = false;
                 string curColour = "white";
                 int j = spaceOffset;
                 while (j < lines[i].Length)
@@ -237,8 +239,8 @@ namespace SCCMaker
                                 }
                                 encodedStr.Append(" ");
                                 curColour = command.Split(' ')[1].ToLowerInvariant();
-								if (j == 0)
-									encodedStr.Append(getCommandParityCode("Backspace") + " ");
+								if (noVisibleCharsYet)
+									startingWithFormattingCodes = true;
 								break;
                             case "centre":
                             case "center":
@@ -265,8 +267,8 @@ namespace SCCMaker
                                     encodedStr.Append(getCommandParityCode("Italics"));
                                 isItalics = true;
                                 encodedStr.Append(" ");
-								if (j == 0)
-									encodedStr.Append(getCommandParityCode("Backspace") + " ");
+								if (noVisibleCharsYet)
+									startingWithFormattingCodes = true;
                                 break;
                             case "u":
                                 if (pendingChars())
@@ -298,8 +300,8 @@ namespace SCCMaker
                                     default: throw new ArgumentException("Underline: Colour mismatch.");
                                 }
                                 encodedStr.Append(" ");
-								if (j == 0)
-									encodedStr.Append(getCommandParityCode("Backspace") + " ");
+								if (noVisibleCharsYet)
+									startingWithFormattingCodes = true;
 								break;
                             case "/i":
                                 if (pendingChars())
@@ -392,7 +394,10 @@ namespace SCCMaker
                     }
                     else
                     {
+						if (startingWithFormattingCodes && noVisibleCharsYet)
+							encodedStr.Append(getCommandParityCode("Backspace") + " ");
                         appendNextChar(lines[i][j], isItalics);
+						noVisibleCharsYet = false;
                     }
                     j++;
                 }
