@@ -186,6 +186,21 @@ namespace SCCMaker
 			Font curFont = normalFont;
 			string curStr = "";
 			int i = 0;
+
+			//Adjustment to "screen viewport" for rollup captions
+			if(captionTypeSelector.SelectedIndex != 0 && captionTypeSelector.SelectedIndex != 4)
+			{
+				int offset = (int)rowSelector.Value + caption.Split('\n').Length;
+				if (offset > 16)
+				{
+					offset -= 16;
+					curRow -= offset * height;
+					e.Graphics.DrawLine(new Pen(Color.White, 1),
+						0, (e.ClipRectangle.Height - 1) - (height * offset),
+						e.ClipRectangle.Width, (e.ClipRectangle.Height - 1) - (height * offset));
+				}
+			}
+
 			while (i < caption.Length)
 			{
 				if (caption[i] == '<')
@@ -310,10 +325,12 @@ namespace SCCMaker
 				}
 				else if (caption[i] == '\n')
 				{
+					//Dynamic alignment for text, if needed
 					if (alignment == 1)
 						curCol = ((32 - removeControlCodes(caption.Split('\n')[curLine]).Length) / 2) * width;
 					else if (alignment == 2)
 						curCol = ((32 - removeControlCodes(caption.Split('\n')[curLine]).Length)) * width;
+
 					foreach (char c in curStr)
 					{
 						if (!Caption.charCodes.ContainsKey(c))
@@ -327,11 +344,18 @@ namespace SCCMaker
 							curCol += width;
 						}
 					}
+					
+					//Reset column positioning for new row
 					alignment = 0;
 					curCol = 0;
-					curRow += curStr.Split('\n').Length * height;
+					curRow += height;
 					curStr = "";
 					curLine++;
+
+					//Reset italics for new line (underlining is normally unaffected)
+					if (curFont.Equals(italicAndUnderlinedFont) || curFont.Equals(underlinedFont))
+						curFont = underlinedFont;
+					else curFont = normalFont;
 				}
 				else
 				{
