@@ -824,7 +824,7 @@ namespace SCCMaker
 						Caption c = new Caption("");
 						c.Arguments = generateCaptionArguments(0, -1, captionList.Count == 0);
 						c.StartTime = Timestamp.parse(caption.Split('\t')[0]);
-						c.StartTime.Frame = (int)((c.StartTime.Frame / 29.97m) * fpsSelector.Value);
+						c.StartTime.Frame = (int)((c.StartTime.Frame / 29.94m) * fpsSelector.Value);
 						string disp = caption.Split('\t')[1];
 
 						if (i > 1 && captionList.Count > 0)
@@ -833,6 +833,8 @@ namespace SCCMaker
 							if (disp.Replace(" ", "").Equals(SingleCaptionBuilder.getParityBytes(Caption.commandCodes["ClearScreen"])))
 								continue;
 						}
+
+						string curStyle = "";
 
 						foreach (string word in disp.Split(' '))
 						{
@@ -856,6 +858,10 @@ namespace SCCMaker
 									{
 										string[] rowInfo = commandKeys[b].Split(',');
 										c.Arguments = string.Join(",", new string[] { c.Arguments.Split(',')[0], rowInfo[1].ToString(), Convert.ToInt32(captionList.Count < 2).ToString() });
+										if (commandKeys[b].EndsWith("True"))
+										{
+											curStyle += "underline ";
+										}
 									}
 									else
 									{
@@ -882,18 +888,117 @@ namespace SCCMaker
 												break;
 											case "TabOver1":
 												c.DisplayStr += " ";
+												if (Regex.IsMatch(curStyle, "underline"))
+													c.DisplayStr += "<u>";
 												break;
 											case "TabOver2":
 												c.DisplayStr += "  ";
+												if (Regex.IsMatch(curStyle, "underline"))
+													c.DisplayStr += "<u>";
 												break;
 											case "TabOver3":
 												c.DisplayStr += "   ";
+												if (Regex.IsMatch(curStyle, "underline"))
+													c.DisplayStr += "<u>";
 												break;
 											case "ClearBuffer":
 											case "ClearScreen":
 											case "DisplayCaption":
 												break;
-												//Still need the stylings
+
+											case "Italics":
+												c.DisplayStr += "<i>";
+												curStyle += "italics ";
+												break;
+
+											case "White_":
+											case "White":
+												if (curStyle.Contains("Colour_"))
+												{
+													c.DisplayStr += "</colour>";
+													curStyle = Regex.Replace(curStyle, @"Colour_[^\s]+", "");
+												}
+
+												if (curStyle.Contains("italics"))
+												{
+													c.DisplayStr += "</i>";
+													curStyle = curStyle.Replace("italics", "");
+												}
+
+												bool whiteUnderline = commandKeys[b].Contains("_");
+												if (whiteUnderline)
+												{
+													if (!curStyle.Contains("underline"))
+													{
+														c.DisplayStr += "<u>";
+														curStyle += "underline ";
+													}
+												}
+												else
+												{
+													if (curStyle.Contains("underline"))
+													{
+														c.DisplayStr += "</u>";
+														curStyle = curStyle.Replace("underline", "");
+													}
+												}
+												break;
+
+											case "Green_":
+											case "Green":
+											case "Blue_":
+											case "Blue":
+											case "Cyan_":
+											case "Cyan":
+											case "Red_":
+											case "Red":
+											case "Yellow_":
+											case "Yellow":
+											case "Magenta_":
+											case "Magenta":
+												string commandColour = commandKeys[b];
+												commandColour = commandColour.Replace("_", "");
+												if (commandKeys[b].Contains('_'))
+												{
+													if (!curStyle.Contains("underline"))
+													{
+														c.DisplayStr += "<u>";
+														curStyle += "underline ";
+													}
+												}
+												else
+												{
+													if (curStyle.Contains("underline"))
+													{
+														c.DisplayStr += "</u>";
+														curStyle = curStyle.Replace("underline", "");
+													}
+												}
+												if (curStyle.Contains(commandColour))
+												{
+													if (curStyle.Contains("italics"))
+													{
+														c.DisplayStr += "</i>";
+														curStyle = curStyle.Replace("italics", "");
+													}
+												}
+												else
+												{
+													c.DisplayStr += "<colour " + commandColour.ToLower() + ">";
+													if (curStyle.Contains("Colour_"))
+													{
+														curStyle = Regex.Replace(curStyle, @"Colour_([^\s]+)", "Colour_" + commandColour);
+													}
+													else
+													{
+														curStyle += "Colour_" + commandColour + " ";
+													}
+												}
+												break;
+
+											default:
+												Console.WriteLine("Unhandled SCC key: " + commandKeys[b]);
+												break;
 										}
 									}
 								}
@@ -1307,7 +1412,7 @@ namespace SCCMaker
 					if (captionList.Count > 0)
 					{
 						SaveFileDialog s = sender as SaveFileDialog;
-						
+
 						using (BinaryWriter w = new BinaryWriter(s.OpenFile(), Encoding.UTF8))
 						{
 							w.Write(Strings.saveVersion_v2);

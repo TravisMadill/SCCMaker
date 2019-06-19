@@ -85,7 +85,7 @@ namespace SCCMaker
         public bool IsFinalizedTimestamp { get; set; }
         public static decimal FrameRate { get; set; } = 59.94m;
         public static bool DropFrame { get; set; } = false;
-        public static Timestamp Zero { get => zero; set => zero = value; }
+        public static Timestamp Zero { get => zero; private set => zero = value; }
 
         private static Timestamp zero = new Timestamp()
         {
